@@ -115,7 +115,7 @@ const VictoryMusic = (function () {
       if (!AC) return null;
       ctx = new AC();
       master = ctx.createGain();
-      master.gain.value = 0.28;
+      master.gain.value = 0.75;
       master.connect(ctx.destination);
     }
     return ctx;
@@ -159,31 +159,31 @@ const VictoryMusic = (function () {
     const c = getCtx();
     if (!c || !master) return;
     master.gain.cancelScheduledValues(c.currentTime);
-    master.gain.setValueAtTime(0.28, c.currentTime);
+    master.gain.setValueAtTime(0.75, c.currentTime);
 
     const o = delaySec;
     const melody = [
-      [N.G4, 0, 0.11, 'square', 0.07],
-      [N.C5, 0.11, 0.11, 'square', 0.07],
-      [N.E5, 0.22, 0.11, 'square', 0.07],
-      [N.G5, 0.33, 0.32, 'square', 0.08],
-      [N.F5, 0.68, 0.1, 'square', 0.065],
-      [N.E5, 0.78, 0.1, 'square', 0.065],
-      [N.D5, 0.88, 0.1, 'square', 0.065],
-      [N.C5, 0.98, 0.22, 'square', 0.07],
-      [N.E5, 1.24, 0.1, 'square', 0.07],
-      [N.G5, 1.34, 0.1, 'square', 0.075],
-      [N.C6, 1.44, 0.55, 'square', 0.08],
+      [N.G4, 0, 0.11, 'square', 0.18],
+      [N.C5, 0.11, 0.11, 'square', 0.18],
+      [N.E5, 0.22, 0.11, 'square', 0.18],
+      [N.G5, 0.33, 0.32, 'square', 0.2],
+      [N.F5, 0.68, 0.1, 'square', 0.16],
+      [N.E5, 0.78, 0.1, 'square', 0.16],
+      [N.D5, 0.88, 0.1, 'square', 0.16],
+      [N.C5, 0.98, 0.22, 'square', 0.18],
+      [N.E5, 1.24, 0.1, 'square', 0.18],
+      [N.G5, 1.34, 0.1, 'square', 0.19],
+      [N.C6, 1.44, 0.55, 'square', 0.2],
     ];
 
     melody.forEach(([f, s, d, ty, v]) => tone(f, s + o, d, ty, v));
 
-    chord([N.C3, N.G3, N.C4, N.E4], o, 0.62, 0.05);
-    chord([N.G3, N.B3, N.D5, N.G4], o + 0.62, 0.58, 0.045);
-    chord([N.C3, N.C4, N.E4, N.G4], o + 1.22, 0.78, 0.05);
+    chord([N.C3, N.G3, N.C4, N.E4], o, 0.62, 0.14);
+    chord([N.G3, N.B3, N.D5, N.G4], o + 0.62, 0.58, 0.12);
+    chord([N.C3, N.C4, N.E4, N.G4], o + 1.22, 0.78, 0.14);
 
     [N.C6, N.E5, N.G5].forEach((f, i) => {
-      tone(f, o + 1.44 + i * 0.06, 0.35, 'sine', 0.035);
+      tone(f, o + 1.44 + i * 0.06, 0.35, 'sine', 0.09);
     });
   }
 
@@ -196,14 +196,14 @@ const VictoryMusic = (function () {
     if (!c || !master) return;
     if (immediate) {
       master.gain.cancelScheduledValues(c.currentTime);
-      master.gain.setValueAtTime(0.28, c.currentTime);
+      master.gain.setValueAtTime(0.75, c.currentTime);
       return;
     }
     master.gain.cancelScheduledValues(c.currentTime);
     master.gain.setValueAtTime(master.gain.value, c.currentTime);
     master.gain.exponentialRampToValueAtTime(0.0001, c.currentTime + 0.35);
     fadeTimer = setTimeout(() => {
-      if (master && ctx) master.gain.setValueAtTime(0.28, ctx.currentTime);
+      if (master && ctx) master.gain.setValueAtTime(0.75, ctx.currentTime);
       fadeTimer = null;
     }, 400);
   }
