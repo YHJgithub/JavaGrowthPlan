@@ -1,12 +1,14 @@
-﻿const SK = 'java_growth_roadmap_v3';
+const SK = 'java_growth_roadmap_v3';
 const THEME_SK = 'java_growth_roadmap_theme';
 const TOTAL_WEEKS = 40;
 
-// ── State ──
 let done = {};
 let activePhase = 0;
 let open = {};
 let themeMode = localStorage.getItem(THEME_SK) || 'dark';
+let eventsBound = false;
+let overlayKeyHandler = null;
+let sheetKeyHandler = null;
 
 function getSystemTheme() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -23,11 +25,125 @@ function updateThemeMeta() {
   meta.setAttribute('content', color || (getResolvedTheme() === 'dark' ? '#0a0e14' : '#f4f6f9'));
 }
 
+function haptic(type) {
+  if (!navigator.vibrate) return;
+  const patterns = { light: 8, success: [10, 40, 10], warning: [12, 60, 12] };
+  navigator.vibrate(patterns[type] || 8);
+}
+
+function showToast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(showToast._t);
+  showToast._t = setTimeout(() => el.classList.remove('show'), 2400);
+}
+
+function showAlert({ title, message, actions }) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('iosOverlay');
+    const titleEl = document.getElementById('iosAlertTitle');
+    const messageEl = document.getElementById('iosAlertMessage');
+    const actionsEl = document.getElementById('iosAlertActions');
+
+    titleEl.textContent = title;
+    messageEl.textContent = message || '';
+    messageEl.hidden = !message;
+    actionsEl.innerHTML = '';
+
+    actions.forEach((action) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ios-alert-btn'
+        + (action.destructive ? ' destructive' : '')
+        + (action.cancel ? ' cancel' : '');
+      btn.textContent = action.label;
+      btn.addEventListener('click', () => closeAlert(action.value));
+      actionsEl.appendChild(btn);
+    });
+
+    overlay.hidden = false;
+    requestAnimationFrame(() => overlay.classList.add('show'));
+
+    const focusBtn = actionsEl.querySelector('.cancel') || actionsEl.querySelector('button');
+    if (focusBtn) focusBtn.focus();
+
+    overlayKeyHandler = (e) => {
+      if (e.key === 'Escape') {
+        const cancel = actions.find(a => a.cancel);
+        closeAlert(cancel ? cancel.value : undefined);
+      }
+    };
+    document.addEventListener('keydown', overlayKeyHandler);
+
+    overlay.onclick = (e) => {
+      if (e.target === overlay) {
+        const cancel = actions.find(a => a.cancel);
+        closeAlert(cancel ? cancel.value : undefined);
+      }
+    };
+
+    function closeAlert(value) {
+      overlay.classList.remove('show');
+      document.removeEventListener('keydown', overlayKeyHandler);
+      overlay.onclick = null;
+      setTimeout(() => {
+        overlay.hidden = true;
+        resolve(value);
+      }, 220);
+    }
+
+    showAlert._close = closeAlert;
+  });
+}
+
+function showActionSheet(items) {
+  return new Promise((resolve) => {
+    const overlay = document.getElementById('iosSheetOverlay');
+    const actionsEl = document.getElementById('iosSheetActions');
+    const cancelBtn = document.getElementById('iosSheetCancel');
+
+    actionsEl.innerHTML = '';
+    items.forEach((item) => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'ios-sheet-btn' + (item.destructive ? ' destructive' : '');
+      btn.textContent = item.label;
+      btn.addEventListener('click', () => closeSheet(item.value));
+      actionsEl.appendChild(btn);
+    });
+
+    overlay.hidden = false;
+    requestAnimationFrame(() => overlay.classList.add('show'));
+
+    cancelBtn.onclick = () => closeSheet(null);
+    overlay.onclick = (e) => {
+      if (e.target === overlay) closeSheet(null);
+    };
+
+    sheetKeyHandler = (e) => {
+      if (e.key === 'Escape') closeSheet(null);
+    };
+    document.addEventListener('keydown', sheetKeyHandler);
+
+    function closeSheet(value) {
+      overlay.classList.remove('show');
+      document.removeEventListener('keydown', sheetKeyHandler);
+      overlay.onclick = null;
+      cancelBtn.onclick = null;
+      setTimeout(() => {
+        overlay.hidden = true;
+        resolve(value);
+      }, 280);
+    }
+  });
+}
+
 function themeSwitcherHtml() {
   return `<div class="theme-switcher" role="group" aria-label="主题切换">
-    <button type="button" class="theme-btn${themeMode === 'dark' ? ' active' : ''}" data-theme="dark" onclick="setTheme('dark')">深色</button>
-    <button type="button" class="theme-btn${themeMode === 'light' ? ' active' : ''}" data-theme="light" onclick="setTheme('light')">浅色</button>
-    <button type="button" class="theme-btn${themeMode === 'system' ? ' active' : ''}" data-theme="system" onclick="setTheme('system')">系统</button>
+    <button type="button" class="theme-btn${themeMode === 'dark' ? ' active' : ''}" data-action="theme" data-theme="dark">深色</button>
+    <button type="button" class="theme-btn${themeMode === 'light' ? ' active' : ''}" data-action="theme" data-theme="light">浅色</button>
+    <button type="button" class="theme-btn${themeMode === 'system' ? ' active' : ''}" data-action="theme" data-theme="system">系统</button>
   </div>`;
 }
 
@@ -37,7 +153,10 @@ function setTheme(mode) {
   document.documentElement.setAttribute('data-theme', mode);
   localStorage.setItem(THEME_SK, mode);
   updateThemeMeta();
-  render();
+  document.querySelectorAll('.theme-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.theme === mode);
+  });
+  haptic('light');
 }
 
 function initThemeListener() {
@@ -89,46 +208,13 @@ function formatSectionCount(sec) {
   return `${sp.n}/${sp.total} 必做`;
 }
 
-function showToast(msg) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.classList.add('show');
-  clearTimeout(showToast._t);
-  showToast._t = setTimeout(() => el.classList.remove('show'), 2200);
-}
-
-function toggleSection(sid) {
-  open[sid] = !open[sid];
-  saveState();
-  render();
-}
-
-function goPhase(i) {
-  activePhase = i;
-  const first = PHASES[i].sections[0].id;
-  open = { [first]: true };
-  saveState();
-  render();
-}
-
-function resetProgress() {
-  if (!confirm('确定要清空所有进度吗？此操作不可撤销。')) return;
-  done = {};
-  open = { [PHASES[activePhase].sections[0].id]: true };
-  localStorage.removeItem(SK);
-  saveState();
-  render();
-  showToast('进度已重置');
-}
-
 function esc(s) {
   const d = document.createElement('div');
   d.textContent = s;
   return d.innerHTML;
 }
 
-function render() {
-  const app = document.getElementById('app');
+function getProgressSnapshot() {
   const tasks = allTasks();
   const req = requiredTasks(tasks);
   const total = prog(tasks);
@@ -138,96 +224,47 @@ function render() {
   const phReq = requiredTasks(phTasks);
   const phProg = prog(phReq);
   const phAllProg = prog(phTasks);
+  const tabProgress = PHASES.map(p => prog(requiredTasks(p.sections.flatMap(s => s.tasks))));
+  return { tasks, req, total, reqTotal, ph, phTasks, phProg, phAllProg, tabProgress };
+}
 
-  let html = '';
+function taskTagsHtml(task) {
+  let prefix = task.optional
+    ? '<span class="task-tag optional">选做</span>'
+    : '<span class="task-tag required">必做</span>';
+  if (task.practice) prefix += '<span class="task-tag practice">实践</span>';
+  if (task.parallel) prefix += '<span class="task-tag parallel">并行</span>';
+  return prefix;
+}
 
-  // Header
-  html += `<div class="header">
-    <div class="header-top">
-      <div class="header-main">
-        <h1>Java 成长路线图</h1>
-        <p class="subtitle">9–10 个月 · ${TOTAL_WEEKS} 周 · 5 阶段 · 必做 ${reqTotal.total} 项 / 共 ${tasks.length} 项 · 1年+经验定制版</p>
-        <span class="badge">技术栈：JDK 17 + Spring Boot 3 + Spring Cloud Alibaba</span>
-      </div>
-      <div class="header-actions">
-        ${themeSwitcherHtml()}
-        <div class="overall-progress">
-          <div>
-            <div class="overall-label">必做 ${reqTotal.n} / ${reqTotal.total}</div>
-            <div class="required-label">全部 ${total.n} / ${total.total}</div>
-          </div>
-          <div class="overall-pct" style="color:${reqTotal.pct===100?'var(--success)':'var(--accent)'}">${reqTotal.pct}%</div>
-        </div>
-      </div>
-    </div>
-    <div class="progress-track">
-      <div class="progress-fill" style="width:${reqTotal.pct}%"></div>
-    </div>
-    <div class="legend">
-      <span class="legend-item"><span class="task-tag required">必做</span> 面试/项目核心</span>
-      <span class="legend-item"><span class="task-tag optional">选做</span> 时间紧可跳过</span>
-      <span class="legend-item"><span class="task-tag practice">实践</span> 需写代码</span>
-      <span class="legend-item"><span class="task-tag parallel">并行</span> 全程持续</span>
-    </div>
-  </div>`;
-
-  // Phase tabs
-  html += '<div class="phase-tabs">';
-  PHASES.forEach((p, i) => {
-    const pp = prog(requiredTasks(p.sections.flatMap(s => s.tasks)));
-    const active = i === activePhase;
-    html += `<button class="phase-tab${active?' active':''}" style="--tab-color:${p.color}" onclick="goPhase(${i})">
-      <span>P${p.n}</span>
-      <div class="mini-track"><div class="mini-fill" style="width:${pp.pct}%;background:${p.color}"></div></div>
-    </button>`;
-  });
-  html += '</div>';
-
-  // Phase card
-  html += `<div class="phase-card" style="--phase-color:${ph.color}">
-    <div class="phase-card-header">
-      <div>
-        <span class="phase-tag" style="background:${ph.color}18;color:${ph.color};border:1px solid ${ph.color}44">Phase ${ph.n}</span>
-        <div class="phase-sub">${esc(ph.sub)}</div>
-        <div class="phase-title">${esc(ph.title)}</div>
-        ${ph.note ? `<div class="phase-sub" style="margin-top:6px;font-style:italic">${esc(ph.note)}</div>` : ''}
-      </div>
-      <div style="text-align:right">
-        <div class="phase-pct" style="color:${ph.color}">${phProg.pct}%</div>
-        <div class="phase-sub">必做 ${phProg.n} / ${phProg.total}</div>
-        <div class="required-label">全部 ${phAllProg.n}/${phAllProg.total}</div>
-      </div>
-    </div>
-    <div class="progress-track phase-progress-track">
-      <div class="progress-fill" style="width:${phProg.pct}%;--phase-color:${ph.color}"></div>
-    </div>
-  </div>`;
-
-  // Sections
-  html += '<div class="sections" style="--phase-color:' + ph.color + '">';
-  ph.sections.forEach(sec => {
+function sectionsHtml(ph) {
+  let html = `<div class="sections" style="--phase-color:${ph.color}">`;
+  ph.sections.forEach((sec, idx) => {
     const sp = prog(requiredTasks(sec.tasks));
     const isOpen = !!open[sec.id];
     const allDone = sp.pct === 100;
+    const isLast = idx === ph.sections.length - 1;
 
-    html += `<div class="section${isOpen?' open':''}${allDone?' done':''}" id="sec-${sec.id}">
-      <button class="section-header" onclick="toggleSection('${sec.id}')">
-        <span class="section-chevron">›</span>
+    html += `<div class="section${isOpen ? ' open' : ''}${allDone ? ' done' : ''}${isLast ? ' last' : ''}" id="sec-${sec.id}" data-section-id="${sec.id}">
+      <button type="button" class="section-header" data-action="section" data-section="${sec.id}"
+        aria-expanded="${isOpen}" aria-controls="body-${sec.id}">
         <div class="section-info">
           <div class="section-meta">
             <span class="section-week" style="color:${ph.color}">${esc(sec.week)}</span>
             <span class="section-title">${esc(sec.title)}</span>
           </div>
         </div>
-        <span class="section-count${allDone?' all-done':''}">${formatSectionCount(sec)}${allDone?' ✓':''}</span>
+        <span class="section-count${allDone ? ' all-done' : ''}">${formatSectionCount(sec)}${allDone ? ' ✓' : ''}</span>
+        <span class="section-chevron" aria-hidden="true">›</span>
       </button>
-      <div class="section-body">`;
+      <div class="section-body-wrap">
+        <div class="section-body" id="body-${sec.id}">`;
 
     if (sec.resources && sec.resources.length) {
       html += '<div class="resources"><div class="resources-label">推荐学习资源</div><div class="resource-list">';
       sec.resources.forEach(r => {
         if (r.url) {
-          html += `<a class="resource-link" href="${esc(r.url)}" target="_blank" rel="noopener" onclick="event.stopPropagation()">
+          html += `<a class="resource-link" href="${esc(r.url)}" target="_blank" rel="noopener">
             <span class="rtype">${esc(r.type)}</span>${esc(r.label)}</a>`;
         } else {
           html += `<span class="resource-link no-url"><span class="rtype">${esc(r.type)}</span>${esc(r.label)}</span>`;
@@ -238,32 +275,233 @@ function render() {
 
     sec.tasks.forEach(task => {
       const isDone = !!done[task.id];
-      let prefix = task.optional
-        ? '<span class="task-tag optional">选做</span>'
-        : '<span class="task-tag required">必做</span>';
-      if (task.practice) prefix += '<span class="task-tag practice">实践</span>';
-      if (task.parallel) prefix += '<span class="task-tag parallel">并行</span>';
-
-      html += `<div class="task${isDone?' done':''}${task.optional?' optional-task':''}" onclick="toggleTask('${task.id}','${sec.id}')">
-        <div class="checkbox">
+      html += `<button type="button" class="task${isDone ? ' done' : ''}${task.optional ? ' optional-task' : ''}"
+        role="checkbox" aria-checked="${isDone}" data-action="task" data-task="${task.id}" data-section="${sec.id}">
+        <span class="checkbox" aria-hidden="true">
           <svg viewBox="0 0 10 8" fill="none"><path d="M1 4L3.5 6.5L9 1" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        </div>
-        <span class="task-text">${prefix}${esc(task.t)}</span>
-      </div>`;
+        </span>
+        <span class="task-text">${taskTagsHtml(task)}${esc(task.t)}</span>
+      </button>`;
     });
 
-    html += '</div></div>';
+    html += '</div></div></div>';
   });
   html += '</div>';
+  return html;
+}
 
-  // Footer
-  html += `<div class="footer-actions">
-    <button class="btn" onclick="expandAll()">展开全部</button>
-    <button class="btn" onclick="collapseAll()">收起全部</button>
-    <button class="btn btn-danger" onclick="resetProgress()">重置进度</button>
+function phaseContentHtml() {
+  const { ph, phProg, phAllProg } = getProgressSnapshot();
+
+  let html = `<div class="phase-content" style="--phase-color:${ph.color}">`;
+  html += `<div class="phase-card">
+    <div class="phase-card-header">
+      <div>
+        <span class="phase-tag" style="background:${ph.color}18;color:${ph.color};border:1px solid ${ph.color}44">Phase ${ph.n}</span>
+        <div class="phase-sub">${esc(ph.sub)}</div>
+        <div class="phase-title">${esc(ph.title)}</div>
+        ${ph.note ? `<div class="phase-sub phase-note">${esc(ph.note)}</div>` : ''}
+      </div>
+      <div class="phase-stats">
+        <div class="phase-pct" style="color:${ph.color}">${phProg.pct}%</div>
+        <div class="phase-sub">必做 <span class="phase-req-count">${phProg.n} / ${phProg.total}</span></div>
+        <div class="required-label">全部 <span class="phase-all-count">${phAllProg.n}/${phAllProg.total}</span></div>
+      </div>
+    </div>
+    <div class="progress-track phase-progress-track">
+      <div class="progress-fill phase-progress-fill" style="width:${phProg.pct}%"></div>
+    </div>
   </div>`;
 
-  app.innerHTML = html;
+  html += sectionsHtml(ph);
+
+  html += `<div class="footer-actions footer-desktop">
+    <button type="button" class="btn" data-action="expand-all">展开全部</button>
+    <button type="button" class="btn" data-action="collapse-all">收起全部</button>
+    <button type="button" class="btn btn-danger" data-action="reset">重置进度</button>
+  </div>
+  <div class="footer-actions footer-mobile">
+    <button type="button" class="btn btn-more" data-action="more-actions">更多操作</button>
+  </div>`;
+
+  html += '</div>';
+  return html;
+}
+
+function headerHtml() {
+  const { tasks, reqTotal, total } = getProgressSnapshot();
+
+  return `<div class="sticky-nav" id="stickyNav" aria-hidden="true">
+    <div class="sticky-nav-inner">
+      <span class="sticky-title">Java 成长路线图</span>
+      <span class="sticky-pct">${reqTotal.pct}%</span>
+    </div>
+    <div class="progress-track sticky-progress">
+      <div class="progress-fill header-progress-fill" style="width:${reqTotal.pct}%"></div>
+    </div>
+  </div>
+  <div class="header">
+    <div class="header-top">
+      <div class="header-main">
+        <h1>Java 成长路线图</h1>
+        <p class="subtitle">9–10 个月 · ${TOTAL_WEEKS} 周 · 5 阶段 · 必做 ${reqTotal.total} 项 / 共 ${tasks.length} 项 · 1年+经验定制版</p>
+        <span class="badge">技术栈：JDK 17 + Spring Boot 3 + Spring Cloud Alibaba</span>
+      </div>
+      <div class="header-actions">
+        ${themeSwitcherHtml()}
+        <div class="overall-progress">
+          <div>
+            <div class="overall-label">必做 <span class="overall-req-count">${reqTotal.n} / ${reqTotal.total}</span></div>
+            <div class="required-label">全部 <span class="overall-all-count">${total.n} / ${total.total}</span></div>
+          </div>
+          <div class="overall-pct" style="color:${reqTotal.pct === 100 ? 'var(--success)' : 'var(--accent)'}">${reqTotal.pct}%</div>
+        </div>
+      </div>
+    </div>
+    <div class="progress-track header-progress-track">
+      <div class="progress-fill header-progress-fill" style="width:${reqTotal.pct}%"></div>
+    </div>
+    <div class="legend">
+      <span class="legend-item"><span class="task-tag required">必做</span> 面试/项目核心</span>
+      <span class="legend-item"><span class="task-tag optional">选做</span> 时间紧可跳过</span>
+      <span class="legend-item"><span class="task-tag practice">实践</span> 需写代码</span>
+      <span class="legend-item"><span class="task-tag parallel">并行</span> 全程持续</span>
+    </div>
+  </div>`;
+}
+
+function phaseTabsHtml() {
+  const { tabProgress } = getProgressSnapshot();
+  let html = '<div class="phase-tabs-segment"><div class="phase-tabs" role="tablist" aria-label="学习阶段">';
+  PHASES.forEach((p, i) => {
+    const pp = tabProgress[i];
+    const active = i === activePhase;
+    html += `<button type="button" role="tab" aria-selected="${active}" class="phase-tab${active ? ' active' : ''}"
+      style="--tab-color:${p.color}" data-action="phase" data-phase="${i}">
+      <span>P${p.n}</span>
+      <div class="mini-track"><div class="mini-fill" style="width:${pp.pct}%;background:${p.color}"></div></div>
+    </button>`;
+  });
+  html += '</div></div>';
+  return html;
+}
+
+function render(full = true) {
+  const app = document.getElementById('app');
+  if (full) {
+    app.innerHTML = headerHtml() + phaseTabsHtml() + '<div id="phaseContentMount"></div>';
+    document.getElementById('phaseContentMount').innerHTML = phaseContentHtml();
+    bindEvents();
+    initStickyNav();
+  }
+}
+
+function renderPhaseContent(animate = false) {
+  const mount = document.getElementById('phaseContentMount');
+  if (!mount) {
+    render(true);
+    return;
+  }
+
+  const prevHeight = mount.offsetHeight;
+  if (prevHeight > 0) mount.style.minHeight = prevHeight + 'px';
+
+  const doUpdate = () => {
+    mount.innerHTML = phaseContentHtml();
+  };
+
+  const finish = () => {
+    mount.style.minHeight = '';
+  };
+
+  if (animate && typeof document.startViewTransition === 'function') {
+    const transition = document.startViewTransition(doUpdate);
+    transition.finished.then(finish).catch(finish);
+    setTimeout(finish, 350);
+  } else {
+    doUpdate();
+    finish();
+  }
+}
+
+function updateProgressUI() {
+  const { reqTotal, total, phProg, phAllProg, tabProgress } = getProgressSnapshot();
+
+  document.querySelectorAll('.overall-pct').forEach(el => {
+    el.textContent = reqTotal.pct + '%';
+    el.style.color = reqTotal.pct === 100 ? 'var(--success)' : 'var(--accent)';
+  });
+
+  const reqCount = document.querySelector('.overall-req-count');
+  if (reqCount) reqCount.textContent = `${reqTotal.n} / ${reqTotal.total}`;
+  const allCount = document.querySelector('.overall-all-count');
+  if (allCount) allCount.textContent = `${total.n} / ${total.total}`;
+
+  document.querySelectorAll('.header-progress-fill').forEach(el => {
+    el.style.width = reqTotal.pct + '%';
+  });
+
+  const stickyPct = document.querySelector('.sticky-pct');
+  if (stickyPct) stickyPct.textContent = reqTotal.pct + '%';
+
+  const phasePct = document.querySelector('.phase-pct');
+  if (phasePct) phasePct.textContent = phProg.pct + '%';
+  const phaseReq = document.querySelector('.phase-req-count');
+  if (phaseReq) phaseReq.textContent = `${phProg.n} / ${phProg.total}`;
+  const phaseAll = document.querySelector('.phase-all-count');
+  if (phaseAll) phaseAll.textContent = `${phAllProg.n}/${phAllProg.total}`;
+  const phaseFill = document.querySelector('.phase-progress-fill');
+  if (phaseFill) phaseFill.style.width = phProg.pct + '%';
+
+  document.querySelectorAll('.phase-tab').forEach((tab, i) => {
+    const pp = tabProgress[i];
+    const fill = tab.querySelector('.mini-fill');
+    if (fill) fill.style.width = pp.pct + '%';
+  });
+}
+
+function updatePhaseTabs() {
+  document.querySelectorAll('.phase-tab').forEach((tab, i) => {
+    const active = i === activePhase;
+    tab.classList.toggle('active', active);
+    tab.setAttribute('aria-selected', active);
+  });
+}
+
+function updateSectionUI(sectionId) {
+  const sec = PHASES[activePhase].sections.find(s => s.id === sectionId);
+  const sectionEl = document.getElementById('sec-' + sectionId);
+  if (!sec || !sectionEl) return;
+
+  const sp = prog(requiredTasks(sec.tasks));
+  const countEl = sectionEl.querySelector('.section-count');
+  if (countEl) {
+    countEl.textContent = formatSectionCount(sec) + (sp.pct === 100 ? ' ✓' : '');
+    countEl.classList.toggle('all-done', sp.pct === 100);
+  }
+  sectionEl.classList.toggle('done', sp.pct === 100);
+}
+
+function updateTaskRow(taskId) {
+  const btn = document.querySelector(`[data-task="${taskId}"]`);
+  if (!btn) return;
+  const isDone = !!done[taskId];
+  btn.classList.toggle('done', isDone);
+  btn.setAttribute('aria-checked', isDone);
+}
+
+function toggleSection(sid) {
+  open[sid] = !open[sid];
+  saveState();
+  haptic('light');
+
+  const sectionEl = document.getElementById('sec-' + sid);
+  if (sectionEl) {
+    const isOpen = !!open[sid];
+    sectionEl.classList.toggle('open', isOpen);
+    const header = sectionEl.querySelector('.section-header');
+    if (header) header.setAttribute('aria-expanded', isOpen);
+  }
 }
 
 function toggleTask(id, sectionId) {
@@ -271,37 +509,157 @@ function toggleTask(id, sectionId) {
   const wasDone = !!done[id];
   done[id] = !wasDone;
   saveState();
-  render();
+
+  updateTaskRow(id);
+  updateSectionUI(sectionId);
+  updateProgressUI();
 
   if (!wasDone) {
+    haptic('success');
     const sec = PHASES[activePhase].sections.find(s => s.id === sectionId);
-    if (sec && prog(requiredTasks(sec.tasks)).pct === 100) showToast('章节「' + sec.title + '」必做项已全部完成！');
-    if (prog(requiredTasks(phTasks)).pct === 100) showToast('阶段「' + PHASES[activePhase].title + '」必做项已全部完成！');
-    if (prog(requiredTasks(allTasks())).pct === 100) showToast('恭喜！全部必做任务完成，可以投递简历了！');
+    if (sec && prog(requiredTasks(sec.tasks)).pct === 100) {
+      showToast('章节「' + sec.title + '」必做项已全部完成！');
+    }
+    if (prog(requiredTasks(phTasks)).pct === 100) {
+      showToast('阶段「' + PHASES[activePhase].title + '」必做项已全部完成！');
+    }
+    if (prog(requiredTasks(allTasks())).pct === 100) {
+      showToast('恭喜！全部必做任务完成，可以投递简历了！');
+    }
+  } else {
+    haptic('light');
   }
+}
+
+function goPhase(i) {
+  if (i === activePhase || i < 0 || i >= PHASES.length) return;
+  activePhase = i;
+  const first = PHASES[i].sections[0].id;
+  open = { [first]: true };
+  saveState();
+  haptic('light');
+  updatePhaseTabs();
+  renderPhaseContent(true);
+  updateProgressUI();
+  window.scrollTo({ top: 0 });
 }
 
 function expandAll() {
   PHASES[activePhase].sections.forEach(s => { open[s.id] = true; });
   saveState();
-  render();
+  document.querySelectorAll('.section').forEach(el => {
+    el.classList.add('open');
+    const header = el.querySelector('.section-header');
+    if (header) header.setAttribute('aria-expanded', 'true');
+  });
+  haptic('light');
 }
 
 function collapseAll() {
   open = {};
   saveState();
-  render();
+  document.querySelectorAll('.section').forEach(el => {
+    el.classList.remove('open');
+    const header = el.querySelector('.section-header');
+    if (header) header.setAttribute('aria-expanded', 'false');
+  });
+  haptic('light');
 }
 
-window.goPhase = goPhase;
-window.toggleSection = toggleSection;
-window.toggleTask = toggleTask;
-window.resetProgress = resetProgress;
-window.expandAll = expandAll;
-window.collapseAll = collapseAll;
-window.setTheme = setTheme;
+async function resetProgress() {
+  haptic('warning');
+  const confirmed = await showAlert({
+    title: '清空所有进度？',
+    message: '此操作不可撤销，所有勾选记录将被删除。',
+    actions: [
+      { label: '取消', cancel: true, value: false },
+      { label: '清空', destructive: true, value: true },
+    ],
+  });
+  if (!confirmed) return;
+
+  done = {};
+  open = { [PHASES[activePhase].sections[0].id]: true };
+  localStorage.removeItem(SK);
+  saveState();
+  renderPhaseContent();
+  updateProgressUI();
+  showToast('进度已重置');
+  haptic('light');
+}
+
+async function handleMoreActions() {
+  const action = await showActionSheet([
+    { label: '展开全部', value: 'expand' },
+    { label: '收起全部', value: 'collapse' },
+    { label: '重置进度', value: 'reset', destructive: true },
+  ]);
+  if (action === 'expand') expandAll();
+  else if (action === 'collapse') collapseAll();
+  else if (action === 'reset') resetProgress();
+}
+
+function bindEvents() {
+  if (eventsBound) return;
+  eventsBound = true;
+
+  const app = document.getElementById('app');
+  app.addEventListener('click', (e) => {
+    const target = e.target.closest('[data-action]');
+    if (!target || target.disabled) return;
+
+    const action = target.dataset.action;
+    switch (action) {
+      case 'phase':
+        goPhase(+target.dataset.phase);
+        break;
+      case 'section':
+        toggleSection(target.dataset.section);
+        break;
+      case 'task':
+        toggleTask(target.dataset.task, target.dataset.section);
+        break;
+      case 'theme':
+        setTheme(target.dataset.theme);
+        break;
+      case 'expand-all':
+        expandAll();
+        break;
+      case 'collapse-all':
+        collapseAll();
+        break;
+      case 'reset':
+        resetProgress();
+        break;
+      case 'more-actions':
+        handleMoreActions();
+        break;
+    }
+  });
+}
+
+function initStickyNav() {
+  const stickyNav = document.getElementById('stickyNav');
+  const header = document.querySelector('.header');
+  if (!stickyNav || !header) return;
+
+  if (initStickyNav._handler) {
+    window.removeEventListener('scroll', initStickyNav._handler);
+  }
+
+  const handler = () => {
+    const threshold = header.offsetHeight * 0.6;
+    const visible = window.scrollY > threshold;
+    stickyNav.classList.toggle('visible', visible);
+    stickyNav.setAttribute('aria-hidden', !visible);
+  };
+
+  initStickyNav._handler = handler;
+  window.addEventListener('scroll', handler, { passive: true });
+  handler();
+}
 
 load();
 initThemeListener();
 updateThemeMeta();
-render();
+render(true);
