@@ -1,12 +1,14 @@
 const VictoryConfetti = (function () {
   let canvas, ctx, particles, animId, running = false;
   let onResize = null;
+  let intensity = 1;
 
   const COLORS = ['#378ADD', '#3ecf8e', '#7f77dd', '#ffd60a', '#ff9f0a', '#ff6b6b', '#bf5af2', '#ffffff'];
 
   function particleCount() {
     const area = window.innerWidth * window.innerHeight;
-    return Math.min(140, Math.max(36, Math.floor(area / 10000)));
+    const base = Math.min(140, Math.max(36, Math.floor(area / 10000)));
+    return Math.max(18, Math.floor(base * intensity));
   }
 
   function createParticle() {
@@ -65,10 +67,11 @@ const VictoryConfetti = (function () {
     animId = requestAnimationFrame(tick);
   }
 
-  function start(canvasEl) {
+  function start(canvasEl, options = {}) {
     stop();
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
+    intensity = options.intensity === 'light' ? 0.5 : 1;
     canvas = canvasEl;
     ctx = canvas.getContext('2d');
     resize();
@@ -81,6 +84,7 @@ const VictoryConfetti = (function () {
 
   function stop() {
     running = false;
+    intensity = 1;
     if (animId) cancelAnimationFrame(animId);
     animId = null;
     if (onResize) {
@@ -98,16 +102,10 @@ const VictoryConfetti = (function () {
   return { start, stop };
 })();
 
-const VictoryMusic = (function () {
+const CelebrationAudio = (function () {
   let ctx = null;
   let master = null;
   let fadeTimer = null;
-
-  const N = {
-    C4: 261.63, E4: 329.63, G4: 392.0, A4: 440.0,
-    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0, C6: 1046.5,
-    G3: 196.0, B3: 246.94, C3: 130.81,
-  };
 
   function getCtx() {
     if (!ctx) {
@@ -152,41 +150,6 @@ const VictoryMusic = (function () {
     notes.forEach((f) => tone(f, start, dur, 'triangle', vol));
   }
 
-  function play(delaySec = 0) {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-    prepareSync();
-    stop(true);
-    const c = getCtx();
-    if (!c || !master) return;
-    master.gain.cancelScheduledValues(c.currentTime);
-    master.gain.setValueAtTime(0.75, c.currentTime);
-
-    const o = delaySec;
-    const melody = [
-      [N.G4, 0, 0.11, 'square', 0.18],
-      [N.C5, 0.11, 0.11, 'square', 0.18],
-      [N.E5, 0.22, 0.11, 'square', 0.18],
-      [N.G5, 0.33, 0.32, 'square', 0.2],
-      [N.F5, 0.68, 0.1, 'square', 0.16],
-      [N.E5, 0.78, 0.1, 'square', 0.16],
-      [N.D5, 0.88, 0.1, 'square', 0.16],
-      [N.C5, 0.98, 0.22, 'square', 0.18],
-      [N.E5, 1.24, 0.1, 'square', 0.18],
-      [N.G5, 1.34, 0.1, 'square', 0.19],
-      [N.C6, 1.44, 0.55, 'square', 0.2],
-    ];
-
-    melody.forEach(([f, s, d, ty, v]) => tone(f, s + o, d, ty, v));
-
-    chord([N.C3, N.G3, N.C4, N.E4], o, 0.62, 0.14);
-    chord([N.G3, N.B3, N.D5, N.G4], o + 0.62, 0.58, 0.12);
-    chord([N.C3, N.C4, N.E4, N.G4], o + 1.22, 0.78, 0.14);
-
-    [N.C6, N.E5, N.G5].forEach((f, i) => {
-      tone(f, o + 1.44 + i * 0.06, 0.35, 'sine', 0.09);
-    });
-  }
-
   function stop(immediate) {
     if (fadeTimer) {
       clearTimeout(fadeTimer);
@@ -208,5 +171,85 @@ const VictoryMusic = (function () {
     }, 400);
   }
 
-  return { prepare, prepareSync, play, stop };
+  return { getCtx, prepareSync, prepare, tone, chord, stop };
+})();
+
+const VictoryMusic = (function () {
+  const N = {
+    C4: 261.63, E4: 329.63, G4: 392.0, A4: 440.0,
+    C5: 523.25, D5: 587.33, E5: 659.25, F5: 698.46, G5: 783.99, A5: 880.0, C6: 1046.5,
+    G3: 196.0, B3: 246.94, C3: 130.81,
+  };
+
+  function play(delaySec = 0) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    CelebrationAudio.prepareSync();
+    CelebrationAudio.stop(true);
+    const c = CelebrationAudio.getCtx();
+    if (!c) return;
+
+    const o = delaySec;
+    const melody = [
+      [N.G4, 0, 0.11, 'square', 0.18],
+      [N.C5, 0.11, 0.11, 'square', 0.18],
+      [N.E5, 0.22, 0.11, 'square', 0.18],
+      [N.G5, 0.33, 0.32, 'square', 0.2],
+      [N.F5, 0.68, 0.1, 'square', 0.16],
+      [N.E5, 0.78, 0.1, 'square', 0.16],
+      [N.D5, 0.88, 0.1, 'square', 0.16],
+      [N.C5, 0.98, 0.22, 'square', 0.18],
+      [N.E5, 1.24, 0.1, 'square', 0.18],
+      [N.G5, 1.34, 0.1, 'square', 0.19],
+      [N.C6, 1.44, 0.55, 'square', 0.2],
+    ];
+
+    melody.forEach(([f, s, d, ty, v]) => CelebrationAudio.tone(f, s + o, d, ty, v));
+
+    CelebrationAudio.chord([N.C3, N.G3, N.C4, N.E4], o, 0.62, 0.14);
+    CelebrationAudio.chord([N.G3, N.B3, N.D5, N.G4], o + 0.62, 0.58, 0.12);
+    CelebrationAudio.chord([N.C3, N.C4, N.E4, N.G4], o + 1.22, 0.78, 0.14);
+
+    [N.C6, N.E5, N.G5].forEach((f, i) => {
+      CelebrationAudio.tone(f, o + 1.44 + i * 0.06, 0.35, 'sine', 0.09);
+    });
+  }
+
+  return {
+    prepare: CelebrationAudio.prepare,
+    prepareSync: CelebrationAudio.prepareSync,
+    play,
+    stop: CelebrationAudio.stop,
+  };
+})();
+
+const SectionMusic = (function () {
+  const N = {
+    G4: 392.0, B4: 493.88, D5: 587.33, G5: 783.99,
+    G3: 196.0, B3: 246.94, D4: 293.66,
+  };
+
+  function play(delaySec = 0) {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    CelebrationAudio.prepareSync();
+    CelebrationAudio.stop(true);
+    if (!CelebrationAudio.getCtx()) return;
+
+    const o = delaySec;
+    const melody = [
+      [N.G4, 0, 0.12, 'square', 0.14],
+      [N.B4, 0.12, 0.12, 'square', 0.14],
+      [N.D5, 0.24, 0.28, 'square', 0.16],
+      [N.G5, 0.54, 0.22, 'square', 0.15],
+    ];
+
+    melody.forEach(([f, s, d, ty, v]) => CelebrationAudio.tone(f, s + o, d, ty, v));
+    CelebrationAudio.chord([N.G3, N.B3, N.D4, N.G4], o + 0.1, 0.55, 0.1);
+  }
+
+  return {
+    prepare: CelebrationAudio.prepare,
+    prepareSync: CelebrationAudio.prepareSync,
+    play,
+    stop: CelebrationAudio.stop,
+  };
 })();

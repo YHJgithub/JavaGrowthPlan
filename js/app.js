@@ -11,6 +11,8 @@ let eventsBound = false;
 let overlayKeyHandler = null;
 let sheetKeyHandler = null;
 let victoryKeyHandler = null;
+let sectionCompleteKeyHandler = null;
+let sectionCompleteOnClose = null;
 let victoryAutoShowTimer = null;
 let alertCloseTimer = null;
 let sheetCloseTimer = null;
@@ -22,6 +24,24 @@ function cancelVictoryAutoShow() {
   if (victoryAutoShowTimer) {
     clearTimeout(victoryAutoShowTimer);
     victoryAutoShowTimer = null;
+  }
+}
+
+function forceDismissSectionComplete() {
+  const overlay = document.getElementById('sectionCompleteOverlay');
+  if (!overlay || overlay.hidden) return;
+
+  overlay.classList.remove('show');
+  VictoryConfetti.stop();
+  SectionMusic.stop();
+  if (sectionCompleteKeyHandler) {
+    document.removeEventListener('keydown', sectionCompleteKeyHandler);
+    sectionCompleteKeyHandler = null;
+  }
+  sectionCompleteOnClose = null;
+  overlay.hidden = true;
+  if (!document.getElementById('victoryOverlay')?.classList.contains('show')) {
+    document.body.style.overflow = '';
   }
 }
 
@@ -100,8 +120,74 @@ function closeVictoryScreen() {
   }, 320);
 }
 
+function closeSectionCompleteScreen() {
+  const overlay = document.getElementById('sectionCompleteOverlay');
+  if (!overlay || overlay.hidden) return;
+
+  overlay.classList.remove('show');
+  VictoryConfetti.stop();
+  SectionMusic.stop();
+  if (sectionCompleteKeyHandler) {
+    document.removeEventListener('keydown', sectionCompleteKeyHandler);
+    sectionCompleteKeyHandler = null;
+  }
+
+  const onClose = sectionCompleteOnClose;
+  sectionCompleteOnClose = null;
+
+  setTimeout(() => {
+    overlay.hidden = true;
+    if (!document.getElementById('victoryOverlay')?.classList.contains('show')) {
+      document.body.style.overflow = '';
+    }
+    if (onClose) onClose();
+  }, 280);
+}
+
+function showSectionCompleteScreen(sec, options = {}) {
+  forceDismissSectionComplete();
+
+  const overlay = document.getElementById('sectionCompleteOverlay');
+  const weekEl = document.getElementById('sectionCompleteWeek');
+  const subtitleEl = document.getElementById('sectionCompleteSubtitle');
+  const messageEl = document.getElementById('sectionCompleteMessage');
+  const closeBtn = document.getElementById('sectionCompleteClose');
+  const canvas = document.getElementById('sectionCompleteConfetti');
+  if (!overlay || !weekEl || !subtitleEl || !messageEl || !closeBtn) return;
+
+  const ph = PHASES[activePhase];
+  overlay.style.setProperty('--phase-color', ph.color);
+  weekEl.textContent = sec.week;
+  subtitleEl.textContent = sec.title;
+  messageEl.textContent = '本小节全部任务已完成，继续加油！';
+  sectionCompleteOnClose = options.onClose || null;
+
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    overlay.classList.add('show');
+    if (canvas) VictoryConfetti.start(canvas, { intensity: 'light' });
+  });
+
+  haptic('success');
+  SectionMusic.play();
+
+  closeBtn.onclick = () => {
+    haptic('light');
+    closeSectionCompleteScreen();
+  };
+
+  sectionCompleteKeyHandler = (e) => {
+    if (e.key === 'Escape') closeSectionCompleteScreen();
+  };
+  document.addEventListener('keydown', sectionCompleteKeyHandler);
+
+  setTimeout(() => closeBtn.focus(), 350);
+}
+
 function showVictoryScreen(options = {}) {
   const { music = true, musicDelay = 0 } = options;
+  forceDismissSectionComplete();
   const overlay = document.getElementById('victoryOverlay');
   const messageEl = document.getElementById('victoryMessage');
   const statsEl = document.getElementById('victoryStats');
@@ -161,6 +247,7 @@ function showAlert({ title, message, actions }) {
   return new Promise((resolve) => {
     cancelVictoryAutoShow();
     forceDismissVictory();
+    forceDismissSectionComplete();
     clearTimeout(alertCloseTimer);
     alertCloseTimer = null;
 
@@ -320,9 +407,6 @@ function load() {
       if (d.open) open = d.open;
     }
   } catch {}
-  if (!Object.keys(open).length && PHASES[activePhase]) {
-    open[PHASES[activePhase].sections[0].id] = true;
-  }
 }
 
 function saveState() {
@@ -664,10 +748,18 @@ function toggleTask(id, sectionId) {
     haptic('success');
     const allDone = isAllRequiredDone();
     const sec = PHASES[activePhase].sections.find(s => s.id === sectionId);
-    if (sec && prog(requiredTasks(sec.tasks)).pct === 100 && !allDone) {
-      showToast('章节「' + sec.title + '」必做项已全部完成！');
-    }
-    if (prog(requiredTasks(phTasks)).pct === 100 && !allDone) {
+    const secAllDone = sec && prog(sec.tasks).pct === 100;
+    const phaseComplete = prog(requiredTasks(phTasks)).pct === 100;
+
+    if (secAllDone && !allDone) {
+      showSectionCompleteScreen(sec, {
+        onClose: () => {
+          if (phaseComplete) {
+            showToast('阶段「' + PHASES[activePhase].title + '」必做项已全部完成！');
+          }
+        },
+      });
+    } else if (phaseComplete && !allDone) {
       showToast('阶段「' + PHASES[activePhase].title + '」必做项已全部完成！');
     }
     if (allDone && shouldShowVictory()) {
@@ -683,8 +775,7 @@ function toggleTask(id, sectionId) {
 function goPhase(i) {
   if (i === activePhase || i < 0 || i >= PHASES.length) return;
   activePhase = i;
-  const first = PHASES[i].sections[0].id;
-  open = { [first]: true };
+  open = {};
   saveState();
   haptic('light');
   updatePhaseTabs();
@@ -770,7 +861,7 @@ async function resetProgress() {
     if (!confirmed) return;
 
     done = {};
-    open = { [PHASES[activePhase].sections[0].id]: true };
+    open = {};
     localStorage.removeItem(SK);
     clearVictorySeen();
     closeVictoryScreen();
@@ -813,6 +904,7 @@ function bindEvents() {
   const app = document.getElementById('app');
   app.addEventListener('click', (e) => {
     VictoryMusic.prepare();
+    SectionMusic.prepare();
     const target = e.target.closest('[data-action]');
     if (!target || target.disabled) return;
 
