@@ -1,5 +1,6 @@
 const SK = 'java_growth_roadmap_v3';
 const THEME_SK = 'java_growth_roadmap_theme';
+const VICTORY_SK = 'java_growth_roadmap_victory_v1';
 const TOTAL_WEEKS = 40;
 
 let done = {};
@@ -9,6 +10,35 @@ let themeMode = localStorage.getItem(THEME_SK) || 'dark';
 let eventsBound = false;
 let overlayKeyHandler = null;
 let sheetKeyHandler = null;
+let victoryKeyHandler = null;
+let victoryAutoShowTimer = null;
+let alertCloseTimer = null;
+let sheetCloseTimer = null;
+let alertGeneration = 0;
+let sheetGeneration = 0;
+let modalActionPending = false;
+
+function cancelVictoryAutoShow() {
+  if (victoryAutoShowTimer) {
+    clearTimeout(victoryAutoShowTimer);
+    victoryAutoShowTimer = null;
+  }
+}
+
+function forceDismissVictory() {
+  const overlay = document.getElementById('victoryOverlay');
+  if (!overlay || overlay.hidden) return;
+
+  overlay.classList.remove('show');
+  VictoryConfetti.stop();
+  VictoryMusic.stop();
+  document.body.style.overflow = '';
+  if (victoryKeyHandler) {
+    document.removeEventListener('keydown', victoryKeyHandler);
+    victoryKeyHandler = null;
+  }
+  overlay.hidden = true;
+}
 
 function getSystemTheme() {
   return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -27,8 +57,96 @@ function updateThemeMeta() {
 
 function haptic(type) {
   if (!navigator.vibrate) return;
-  const patterns = { light: 8, success: [10, 40, 10], warning: [12, 60, 12] };
+  const patterns = {
+    light: 8,
+    success: [10, 40, 10],
+    warning: [12, 60, 12],
+    victory: [30, 40, 30, 40, 50, 80, 40, 30, 40, 30, 60],
+  };
   navigator.vibrate(patterns[type] || 8);
+}
+
+function isAllRequiredDone() {
+  return prog(requiredTasks(allTasks())).pct === 100;
+}
+
+function markVictorySeen() {
+  localStorage.setItem(VICTORY_SK, '1');
+}
+
+function clearVictorySeen() {
+  localStorage.removeItem(VICTORY_SK);
+}
+
+function shouldShowVictory() {
+  return isAllRequiredDone() && !localStorage.getItem(VICTORY_SK);
+}
+
+function closeVictoryScreen() {
+  const overlay = document.getElementById('victoryOverlay');
+  if (!overlay || overlay.hidden) return;
+
+  overlay.classList.remove('show');
+  VictoryConfetti.stop();
+  VictoryMusic.stop();
+  document.body.style.overflow = '';
+  if (victoryKeyHandler) {
+    document.removeEventListener('keydown', victoryKeyHandler);
+    victoryKeyHandler = null;
+  }
+
+  setTimeout(() => {
+    overlay.hidden = true;
+  }, 320);
+}
+
+function showVictoryScreen(options = {}) {
+  const { music = true, musicDelay = 0 } = options;
+  const overlay = document.getElementById('victoryOverlay');
+  const messageEl = document.getElementById('victoryMessage');
+  const statsEl = document.getElementById('victoryStats');
+  const closeBtn = document.getElementById('victoryClose');
+  const canvas = document.getElementById('victoryConfetti');
+  if (!overlay || !messageEl || !statsEl) return;
+
+  const { reqTotal, total } = getProgressSnapshot();
+  messageEl.textContent = `${TOTAL_WEEKS} 周成长路线圆满收官，可以投递简历了！`;
+  statsEl.innerHTML = `
+    <div class="victory-stat">
+      <span class="victory-stat-value">${reqTotal.total}</span>
+      <span class="victory-stat-label">必做完成</span>
+    </div>
+    <div class="victory-stat">
+      <span class="victory-stat-value">${PHASES.length}</span>
+      <span class="victory-stat-label">阶段通关</span>
+    </div>
+    <div class="victory-stat">
+      <span class="victory-stat-value">${total.total}</span>
+      <span class="victory-stat-label">全部完成</span>
+    </div>`;
+
+  overlay.hidden = false;
+  document.body.style.overflow = 'hidden';
+  requestAnimationFrame(() => {
+    overlay.classList.add('show');
+    if (canvas) VictoryConfetti.start(canvas);
+  });
+
+  haptic('victory');
+  if (music) VictoryMusic.play(musicDelay);
+  markVictorySeen();
+
+  closeBtn.onclick = () => {
+    haptic('light');
+    closeVictoryScreen();
+  };
+
+  victoryKeyHandler = (e) => {
+    if (e.key === 'Escape') closeVictoryScreen();
+  };
+  document.addEventListener('keydown', victoryKeyHandler);
+
+  setTimeout(() => closeBtn.focus(), 400);
 }
 
 function showToast(msg) {
@@ -41,6 +159,12 @@ function showToast(msg) {
 
 function showAlert({ title, message, actions }) {
   return new Promise((resolve) => {
+    cancelVictoryAutoShow();
+    forceDismissVictory();
+    clearTimeout(alertCloseTimer);
+    alertCloseTimer = null;
+
+    const gen = ++alertGeneration;
     const overlay = document.getElementById('iosOverlay');
     const titleEl = document.getElementById('iosAlertTitle');
     const messageEl = document.getElementById('iosAlertMessage');
@@ -58,12 +182,19 @@ function showAlert({ title, message, actions }) {
         + (action.destructive ? ' destructive' : '')
         + (action.cancel ? ' cancel' : '');
       btn.textContent = action.label;
-      btn.addEventListener('click', () => closeAlert(action.value));
+      btn.addEventListener('click', () => {
+        VictoryMusic.prepareSync();
+        closeAlert(action.value);
+      });
       actionsEl.appendChild(btn);
     });
 
     overlay.hidden = false;
-    requestAnimationFrame(() => overlay.classList.add('show'));
+    overlay.classList.add('is-active');
+    requestAnimationFrame(() => {
+      if (gen !== alertGeneration) return;
+      overlay.classList.add('show');
+    });
 
     const focusBtn = actionsEl.querySelector('.cancel') || actionsEl.querySelector('button');
     if (focusBtn) focusBtn.focus();
@@ -84,21 +215,28 @@ function showAlert({ title, message, actions }) {
     };
 
     function closeAlert(value) {
-      overlay.classList.remove('show');
+      if (gen !== alertGeneration) return;
+      overlay.classList.remove('show', 'is-active');
       document.removeEventListener('keydown', overlayKeyHandler);
       overlay.onclick = null;
-      setTimeout(() => {
+      clearTimeout(alertCloseTimer);
+      alertCloseTimer = setTimeout(() => {
+        if (gen !== alertGeneration) return;
         overlay.hidden = true;
         resolve(value);
       }, 220);
     }
-
-    showAlert._close = closeAlert;
   });
 }
 
 function showActionSheet(items) {
   return new Promise((resolve) => {
+    cancelVictoryAutoShow();
+    forceDismissVictory();
+    clearTimeout(sheetCloseTimer);
+    sheetCloseTimer = null;
+
+    const gen = ++sheetGeneration;
     const overlay = document.getElementById('iosSheetOverlay');
     const actionsEl = document.getElementById('iosSheetActions');
     const cancelBtn = document.getElementById('iosSheetCancel');
@@ -114,7 +252,11 @@ function showActionSheet(items) {
     });
 
     overlay.hidden = false;
-    requestAnimationFrame(() => overlay.classList.add('show'));
+    overlay.classList.add('is-active');
+    requestAnimationFrame(() => {
+      if (gen !== sheetGeneration) return;
+      overlay.classList.add('show');
+    });
 
     cancelBtn.onclick = () => closeSheet(null);
     overlay.onclick = (e) => {
@@ -127,11 +269,14 @@ function showActionSheet(items) {
     document.addEventListener('keydown', sheetKeyHandler);
 
     function closeSheet(value) {
-      overlay.classList.remove('show');
+      if (gen !== sheetGeneration) return;
+      overlay.classList.remove('show', 'is-active');
       document.removeEventListener('keydown', sheetKeyHandler);
       overlay.onclick = null;
       cancelBtn.onclick = null;
-      setTimeout(() => {
+      clearTimeout(sheetCloseTimer);
+      sheetCloseTimer = setTimeout(() => {
+        if (gen !== sheetGeneration) return;
         overlay.hidden = true;
         resolve(value);
       }, 280);
@@ -318,6 +463,7 @@ function phaseContentHtml() {
   html += `<div class="footer-actions footer-desktop">
     <button type="button" class="btn" data-action="expand-all">展开全部</button>
     <button type="button" class="btn" data-action="collapse-all">收起全部</button>
+    <button type="button" class="btn" data-action="complete-all">圆满收官</button>
     <button type="button" class="btn btn-danger" data-action="reset">重置进度</button>
   </div>
   <div class="footer-actions footer-mobile">
@@ -516,18 +662,21 @@ function toggleTask(id, sectionId) {
 
   if (!wasDone) {
     haptic('success');
+    const allDone = isAllRequiredDone();
     const sec = PHASES[activePhase].sections.find(s => s.id === sectionId);
-    if (sec && prog(requiredTasks(sec.tasks)).pct === 100) {
+    if (sec && prog(requiredTasks(sec.tasks)).pct === 100 && !allDone) {
       showToast('章节「' + sec.title + '」必做项已全部完成！');
     }
-    if (prog(requiredTasks(phTasks)).pct === 100) {
+    if (prog(requiredTasks(phTasks)).pct === 100 && !allDone) {
       showToast('阶段「' + PHASES[activePhase].title + '」必做项已全部完成！');
     }
-    if (prog(requiredTasks(allTasks())).pct === 100) {
-      showToast('恭喜！全部必做任务完成，可以投递简历了！');
+    if (allDone && shouldShowVictory()) {
+      VictoryMusic.play(0.4);
+      setTimeout(() => showVictoryScreen({ music: false }), 400);
     }
   } else {
     haptic('light');
+    if (!isAllRequiredDone()) clearVictorySeen();
   }
 }
 
@@ -566,36 +715,94 @@ function collapseAll() {
   haptic('light');
 }
 
-async function resetProgress() {
-  haptic('warning');
-  const confirmed = await showAlert({
-    title: '清空所有进度？',
-    message: '此操作不可撤销，所有勾选记录将被删除。',
-    actions: [
-      { label: '取消', cancel: true, value: false },
-      { label: '清空', destructive: true, value: true },
-    ],
-  });
-  if (!confirmed) return;
+async function completeAllTasks() {
+  if (modalActionPending) return;
+  const total = prog(allTasks());
+  if (total.pct === 100) {
+    showToast('路线已全部完成');
+    return;
+  }
 
-  done = {};
-  open = { [PHASES[activePhase].sections[0].id]: true };
-  localStorage.removeItem(SK);
-  saveState();
-  renderPhaseContent();
-  updateProgressUI();
-  showToast('进度已重置');
-  haptic('light');
+  modalActionPending = true;
+  try {
+    haptic('warning');
+    const confirmed = await showAlert({
+      title: '确认圆满收官？',
+      message: '将标记路线图内全部任务为已完成（含选做），可通过「重置进度」撤销。',
+      actions: [
+        { label: '取消', cancel: true, value: false },
+        { label: '确认收官', value: true },
+      ],
+    });
+    if (!confirmed) return;
+
+    allTasks().forEach(t => { done[t.id] = true; });
+    saveState();
+    renderPhaseContent();
+    updateProgressUI();
+    haptic('success');
+
+    if (shouldShowVictory()) {
+      VictoryMusic.play(0.4);
+      setTimeout(() => showVictoryScreen({ music: false }), 400);
+    } else {
+      showToast('圆满收官，全部任务已标记完成');
+    }
+  } finally {
+    modalActionPending = false;
+  }
+}
+
+async function resetProgress() {
+  if (modalActionPending) return;
+
+  modalActionPending = true;
+  try {
+    haptic('warning');
+    const confirmed = await showAlert({
+      title: '清空所有进度？',
+      message: '此操作不可撤销，所有勾选记录将被删除。',
+      actions: [
+        { label: '取消', cancel: true, value: false },
+        { label: '清空', destructive: true, value: true },
+      ],
+    });
+    if (!confirmed) return;
+
+    done = {};
+    open = { [PHASES[activePhase].sections[0].id]: true };
+    localStorage.removeItem(SK);
+    clearVictorySeen();
+    closeVictoryScreen();
+    saveState();
+    renderPhaseContent();
+    updateProgressUI();
+    showToast('进度已重置');
+    haptic('light');
+  } finally {
+    modalActionPending = false;
+  }
 }
 
 async function handleMoreActions() {
-  const action = await showActionSheet([
-    { label: '展开全部', value: 'expand' },
-    { label: '收起全部', value: 'collapse' },
-    { label: '重置进度', value: 'reset', destructive: true },
-  ]);
+  if (modalActionPending) return;
+
+  modalActionPending = true;
+  let action;
+  try {
+    action = await showActionSheet([
+      { label: '展开全部', value: 'expand' },
+      { label: '收起全部', value: 'collapse' },
+      { label: '圆满收官', value: 'complete-all' },
+      { label: '重置进度', value: 'reset', destructive: true },
+    ]);
+  } finally {
+    modalActionPending = false;
+  }
+
   if (action === 'expand') expandAll();
   else if (action === 'collapse') collapseAll();
+  else if (action === 'complete-all') completeAllTasks();
   else if (action === 'reset') resetProgress();
 }
 
@@ -605,6 +812,7 @@ function bindEvents() {
 
   const app = document.getElementById('app');
   app.addEventListener('click', (e) => {
+    VictoryMusic.prepare();
     const target = e.target.closest('[data-action]');
     if (!target || target.disabled) return;
 
@@ -627,6 +835,9 @@ function bindEvents() {
         break;
       case 'collapse-all':
         collapseAll();
+        break;
+      case 'complete-all':
+        completeAllTasks();
         break;
       case 'reset':
         resetProgress();
@@ -663,3 +874,6 @@ load();
 initThemeListener();
 updateThemeMeta();
 render(true);
+if (shouldShowVictory()) {
+  victoryAutoShowTimer = setTimeout(showVictoryScreen, 600);
+}

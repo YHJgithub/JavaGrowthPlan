@@ -32,6 +32,17 @@
         <div class="ios-alert-actions" id="iosAlertActions"></div>
       </div>
     </div>
+    <div class="victory-overlay" id="victoryOverlay" hidden>
+      <canvas class="victory-confetti" id="victoryConfetti" aria-hidden="true"></canvas>
+      <div class="victory-content" role="dialog" aria-modal="true" aria-labelledby="victoryTitle">
+        <div class="victory-icon" aria-hidden="true">🏆</div>
+        <h2 class="victory-title" id="victoryTitle">通关！</h2>
+        <p class="victory-subtitle">全部必做任务已完成</p>
+        <p class="victory-message" id="victoryMessage"></p>
+        <div class="victory-stats" id="victoryStats"></div>
+        <button type="button" class="victory-btn" id="victoryClose">继续浏览</button>
+      </div>
+    </div>
     <div class="ios-overlay ios-overlay-sheet" id="iosSheetOverlay" hidden>
       <div
         class="ios-action-sheet"
@@ -47,6 +58,7 @@
       </div>
     </div>
     <script src="js/data.js"></script>
+    <script src="js/celebration.js"></script>
     <script src="js/app.js"></script>
   </body>
 </html>
