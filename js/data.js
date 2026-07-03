@@ -6,14 +6,17 @@
       { id:'s101', week:'Week 1–2', title:'Java 集合框架',
         resources:[
           { label:'JavaGuide 集合', url:'https://javaguide.cn/java/collection/', type:'网站' },
+          { label:'ArrayList 源码分析', url:'https://javaguide.cn/java/collection/arraylist-source-code.html', type:'文章' },
           { label:'HashMap 源码分析', url:'https://javaguide.cn/java/collection/hashmap-source-code.html', type:'文章' },
           { label:'《Java 核心技术 卷I》', type:'书籍' },
         ],
         tasks:[
+          { id:'t006', t:'理解 Java 集合体系：Collection / Map 两大分支，List / Set / Map 常用实现类及选型场景' },
+          { id:'t007', t:'理解 ArrayList 底层：elementData 动态数组、扩容 1.5 倍、modCount 与 fail-fast 原理' },
+          { id:'t004', t:'对比 ArrayList vs LinkedList 在随机访问、头尾/中间插入删除场景下的性能与选型' },
           { id:'t001', t:'理解 HashMap 底层结构（数组+链表+红黑树），搞清楚 JDK 8 树化阈值 8、退化阈值 6' },
           { id:'t002', t:'手画 HashMap.put() 完整流程图，包含 hash 计算、位置定位、扩容触发', practice:true },
           { id:'t003', t:'对比 HashMap vs ConcurrentHashMap，理解 JDK8 CAS + synchronized 桶锁（非 JDK7 分段锁）' },
-          { id:'t004', t:'理解 ArrayList vs LinkedList 在增删查场景下的性能差异（有基础快速过）', optional:true },
           { id:'t005', t:'实践：写代码复现 HashMap 多线程并发 put 导致的数据丢失问题', practice:true },
         ]
       },
