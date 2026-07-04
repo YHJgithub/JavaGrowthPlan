@@ -1,7 +1,7 @@
 const SK = 'java_growth_roadmap_v3';
 const THEME_SK = 'java_growth_roadmap_theme';
 const VICTORY_SK = 'java_growth_roadmap_victory_v1';
-const TOTAL_WEEKS = 40;
+const TOTAL_WEEKS = 41;
 
 let done = {};
 let activePhase = 0;
