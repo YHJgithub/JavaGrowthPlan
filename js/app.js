@@ -1,7 +1,6 @@
 const SK = 'java_growth_roadmap_v3';
 const THEME_SK = 'java_growth_roadmap_theme';
 const VICTORY_SK = 'java_growth_roadmap_victory_v1';
-const TOTAL_WEEKS = 41;
 
 let done = {};
 let activePhase = 0;
@@ -195,8 +194,8 @@ function showVictoryScreen(options = {}) {
   const canvas = document.getElementById('victoryConfetti');
   if (!overlay || !messageEl || !statsEl) return;
 
-  const { reqTotal, total } = getProgressSnapshot();
-  messageEl.textContent = `${TOTAL_WEEKS} 周成长路线圆满收官，可以投递简历了！`;
+  const { reqTotal, total, meta } = getProgressSnapshot();
+  messageEl.textContent = `${meta.totalWeeks} 周成长路线圆满收官，可以投递简历了！`;
   statsEl.innerHTML = `
     <div class="victory-stat">
       <span class="victory-stat-value">${reqTotal.total}</span>
@@ -402,11 +401,12 @@ function load() {
     const raw = localStorage.getItem(SK);
     if (raw) {
       const d = JSON.parse(raw);
-      if (d.done) done = d.done;
+      if (d.done && typeof d.done === 'object') done = d.done;
       if (typeof d.p === 'number') activePhase = d.p;
-      if (d.open) open = d.open;
+      if (d.open && typeof d.open === 'object') open = d.open;
     }
   } catch {}
+  pruneStaleProgress();
 }
 
 function saveState() {
@@ -417,13 +417,94 @@ function allTasks() {
   return PHASES.flatMap(p => p.sections.flatMap(s => s.tasks));
 }
 
+function validTaskIdSet() {
+  return new Set(allTasks().map(t => t.id));
+}
+
+function validSectionIdSet() {
+  return new Set(PHASES.flatMap(p => p.sections.map(s => s.id)));
+}
+
+function pruneStaleProgress() {
+  const taskIds = validTaskIdSet();
+  const sectionIds = validSectionIdSet();
+  let changed = false;
+
+  const nextDone = {};
+  Object.keys(done).forEach((id) => {
+    if (taskIds.has(id) && done[id] === true) {
+      nextDone[id] = true;
+    } else {
+      changed = true;
+    }
+  });
+  done = nextDone;
+
+  const nextOpen = {};
+  Object.keys(open).forEach((id) => {
+    if (sectionIds.has(id)) {
+      nextOpen[id] = open[id];
+    } else {
+      changed = true;
+    }
+  });
+  open = nextOpen;
+
+  const maxPhase = Math.max(0, PHASES.length - 1);
+  if (!Number.isInteger(activePhase) || activePhase < 0 || activePhase > maxPhase) {
+    activePhase = 0;
+    changed = true;
+  }
+
+  if (changed && localStorage.getItem(SK)) saveState();
+}
+
 function requiredTasks(tasks) {
   return tasks.filter(t => !t.optional);
 }
 
+function isTaskDone(id) {
+  return done[id] === true;
+}
+
 function prog(tasks) {
-  const n = tasks.filter(t => done[t.id]).length;
-  return { n, total: tasks.length, pct: tasks.length ? Math.round(n / tasks.length * 100) : 0 };
+  const total = tasks.length;
+  const n = tasks.reduce((count, t) => count + (isTaskDone(t.id) ? 1 : 0), 0);
+  return { n, total, pct: total ? Math.round(n / total * 100) : 0 };
+}
+
+function parseWeekNumbers(text) {
+  if (!text) return [];
+  const weeks = [];
+  const re = /Week\s+(\d+)(?:\s*[–-]\s*(\d+))?/g;
+  let m;
+  while ((m = re.exec(text))) {
+    weeks.push(Number(m[1]));
+    if (m[2]) weeks.push(Number(m[2]));
+  }
+  return weeks;
+}
+
+function getCurriculumMeta() {
+  const tasks = allTasks();
+  const req = requiredTasks(tasks);
+  let totalWeeks = 0;
+  PHASES.forEach((p) => {
+    parseWeekNumbers(p.sub).forEach((w) => { totalWeeks = Math.max(totalWeeks, w); });
+    p.sections.forEach((s) => {
+      parseWeekNumbers(s.week).forEach((w) => { totalWeeks = Math.max(totalWeeks, w); });
+    });
+  });
+  return {
+    phaseCount: PHASES.length,
+    totalWeeks,
+    taskCount: tasks.length,
+    requiredCount: req.length,
+  };
+}
+
+function formatHeaderSubtitle(meta = getCurriculumMeta()) {
+  return `9–10 个月 · ${meta.totalWeeks} 周 · ${meta.phaseCount} 阶段 · 必做 ${meta.requiredCount} 项 / 共 ${meta.taskCount} 项 · 1年+经验定制版`;
 }
 
 function formatSectionCount(sec) {
@@ -444,17 +525,18 @@ function esc(s) {
 }
 
 function getProgressSnapshot() {
+  const meta = getCurriculumMeta();
   const tasks = allTasks();
   const req = requiredTasks(tasks);
   const total = prog(tasks);
   const reqTotal = prog(req);
-  const ph = PHASES[activePhase];
-  const phTasks = ph.sections.flatMap(s => s.tasks);
+  const ph = PHASES[activePhase] || PHASES[0];
+  const phTasks = ph ? ph.sections.flatMap(s => s.tasks) : [];
   const phReq = requiredTasks(phTasks);
   const phProg = prog(phReq);
   const phAllProg = prog(phTasks);
   const tabProgress = PHASES.map(p => prog(requiredTasks(p.sections.flatMap(s => s.tasks))));
-  return { tasks, req, total, reqTotal, ph, phTasks, phProg, phAllProg, tabProgress };
+  return { meta, tasks, req, total, reqTotal, ph, phTasks, phProg, phAllProg, tabProgress };
 }
 
 function taskTagsHtml(task) {
@@ -503,7 +585,7 @@ function sectionsHtml(ph) {
     }
 
     sec.tasks.forEach(task => {
-      const isDone = !!done[task.id];
+      const isDone = isTaskDone(task.id);
       html += `<button type="button" class="task${isDone ? ' done' : ''}${task.optional ? ' optional-task' : ''}"
         role="checkbox" aria-checked="${isDone}" data-action="task" data-task="${task.id}" data-section="${sec.id}">
         <span class="checkbox" aria-hidden="true">
@@ -559,7 +641,7 @@ function phaseContentHtml() {
 }
 
 function headerHtml() {
-  const { tasks, reqTotal, total } = getProgressSnapshot();
+  const { meta, reqTotal, total } = getProgressSnapshot();
 
   return `<div class="sticky-nav" id="stickyNav" aria-hidden="true">
     <div class="sticky-nav-inner">
@@ -574,7 +656,7 @@ function headerHtml() {
     <div class="header-top">
       <div class="header-main">
         <h1>Java 成长路线图</h1>
-        <p class="subtitle">9–10 个月 · ${TOTAL_WEEKS} 周 · 5 阶段 · 必做 ${reqTotal.total} 项 / 共 ${tasks.length} 项 · 1年+经验定制版</p>
+        <p class="subtitle header-subtitle">${formatHeaderSubtitle(meta)}</p>
         <span class="badge">技术栈：JDK 17 + Spring Boot 3 + Spring Cloud Alibaba</span>
       </div>
       <div class="header-actions">
@@ -655,7 +737,11 @@ function renderPhaseContent(animate = false) {
 }
 
 function updateProgressUI() {
-  const { reqTotal, total, phProg, phAllProg, tabProgress } = getProgressSnapshot();
+  const { meta, reqTotal, total, phProg, phAllProg, tabProgress } = getProgressSnapshot();
+
+  document.querySelectorAll('.header-subtitle').forEach(el => {
+    el.textContent = formatHeaderSubtitle(meta);
+  });
 
   document.querySelectorAll('.overall-pct').forEach(el => {
     el.textContent = reqTotal.pct + '%';
@@ -715,7 +801,7 @@ function updateSectionUI(sectionId) {
 function updateTaskRow(taskId) {
   const btn = document.querySelector(`[data-task="${taskId}"]`);
   if (!btn) return;
-  const isDone = !!done[taskId];
+  const isDone = isTaskDone(taskId);
   btn.classList.toggle('done', isDone);
   btn.setAttribute('aria-checked', isDone);
 }
@@ -736,8 +822,9 @@ function toggleSection(sid) {
 
 function toggleTask(id, sectionId) {
   const phTasks = PHASES[activePhase].sections.flatMap(s => s.tasks);
-  const wasDone = !!done[id];
-  done[id] = !wasDone;
+  const wasDone = isTaskDone(id);
+  if (wasDone) delete done[id];
+  else done[id] = true;
   saveState();
 
   updateTaskRow(id);

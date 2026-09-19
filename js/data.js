@@ -1,4 +1,4 @@
-﻿const PHASES = [
+const PHASES = [
   {
     id:'p1', n:1, title:'Java + Spring 核心夯实', sub:'Week 1–8 · 约第 1–2 月', color:'#378ADD',
     note:'先打牢语言与 Spring 原理，设计模式紧跟 Spring 学更易理解。在职且日常用 Spring 可将 Week 6–7 压缩为复习，时间让给项目',
