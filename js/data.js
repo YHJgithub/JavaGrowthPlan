@@ -3,16 +3,6 @@
     id:'p1', n:1, title:'Java + Spring 核心夯实', sub:'Week 1–8 · 约第 1–2 月', color:'#378ADD',
     note:'先打牢语言与 Spring 原理，设计模式紧跟 Spring 学更易理解。在职且日常用 Spring 可将 Week 6–7 压缩为复习，时间让给项目',
     sections:[
-      { id:'s105', week:'全程并行', title:'算法热身（从第 1 天开始）',
-        resources:[
-          { label:'LeetCode 中国', url:'https://leetcode.cn/', type:'刷题' },
-          { label:'代码随想录', url:'https://programmercarl.com/', type:'题单' },
-        ],
-        tasks:[
-          { id:'t041', t:'工作日每天 1 题 LeetCode（Easy 为主），坚持到拿到 offer（P1–P4 累计 60+，P5 再刷 40 Medium，总量 100+）', parallel:true },
-          { id:'t042', t:'第 1 月重点：数组、链表各 10 题' },
-        ]
-      },
       { id:'s101', week:'Week 1–2', title:'Java 集合框架',
         resources:[
           { label:'JavaGuide 集合', url:'https://javaguide.cn/java/collection/', type:'网站' },
@@ -339,22 +329,8 @@
   },
   {
     id:'p5', n:5, title:'求职冲刺', sub:'Week 36–41 · 约第 9–10 月', color:'#D85A30',
-    note:'算法与八股并行推进，按优先级分批完成，不求一次刷完所有题目',
+    note:'八股与面试并行推进，按优先级分批完成，不求一次背完所有题目',
     sections:[
-      { id:'s501', week:'Week 36–38', title:'算法强化',
-        resources:[
-          { label:'LeetCode 中国', url:'https://leetcode.cn/', type:'刷题' },
-          { label:'代码随想录', url:'https://programmercarl.com/', type:'题单' },
-          { label:'NeetCode 150', url:'https://neetcode.io/practice', type:'题单' },
-        ],
-        tasks:[
-          { id:'t401', t:'数组/链表：两数之和、反转链表、合并有序链表' },
-          { id:'t402', t:'栈/队列：有效括号、最小栈、滑动窗口最大值' },
-          { id:'t403', t:'二分：搜索旋转数组、查找首尾位置' },
-          { id:'t404', t:'二叉树：前中后序、最大深度、对称二叉树（BFS+DFS）' },
-          { id:'t405', t:'本阶段完成 40 道 Medium，配合 P1 并行刷题，累计总量 100+ 题' },
-        ]
-      },
       { id:'s502', week:'Week 39–41', title:'面试冲刺',
         resources:[
           { label:'JavaGuide 面试题', url:'https://javaguide.cn/interview-preparation/interview-preparation.html', type:'网站' },
