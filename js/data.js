@@ -1,9 +1,9 @@
 const PHASES = [
   {
-    id:'p1', n:1, title:'Java + Spring 核心夯实', sub:'Week 1–8 · 约第 1–2 月', color:'#378ADD',
-    note:'先打牢语言与 Spring 原理，设计模式紧跟 Spring 学更易理解。在职且日常用 Spring 可将 Week 6–7 压缩为复习，时间让给项目',
+    id:'p1', n:1, title:'Java + Spring 核心夯实', sub:'语言、Spring 与常用设计模式', color:'#378ADD',
+    note:'先打牢语言与 Spring 原理，设计模式紧跟 Spring 学更易理解。在职且日常用 Spring 可将 Spring Core 压缩为复习，把精力留给后续项目',
     sections:[
-      { id:'s101', week:'Week 1–2', title:'Java 集合框架',
+      { id:'s101', mod:'01', title:'Java 集合框架',
         resources:[
           { label:'JavaGuide 集合', url:'https://javaguide.cn/java/collection/', type:'网站' },
           { label:'ArrayList 源码分析', url:'https://javaguide.cn/java/collection/arraylist-source-code.html', type:'文章' },
@@ -16,10 +16,10 @@ const PHASES = [
           { id:'t004', t:'对比 ArrayList vs LinkedList 在随机访问、头尾/中间插入删除场景下的性能与选型' },
           { id:'t001', t:'理解 HashMap 底层结构（数组+链表+红黑树），搞清楚 JDK 8 树化阈值 8、退化阈值 6' },
           { id:'t002', t:'手画 HashMap.put() 完整流程图，包含 hash 计算、位置定位、扩容触发', practice:true },
-          { id:'t005', t:'实践：写代码复现 HashMap 多线程并发 put 导致的数据丢失问题（为 Week 4 学 CHM 做铺垫）', practice:true },
+          { id:'t005', t:'实践：写代码复现 HashMap 多线程并发 put 导致的数据丢失问题（为后续学 ConcurrentHashMap 做铺垫）', practice:true },
         ]
       },
-      { id:'s102', week:'Week 3', title:'Java 8 函数式编程',
+      { id:'s102', mod:'02', title:'Java 8 函数式编程',
         resources:[
           { label:'Oracle Java SE 文档', url:'https://docs.oracle.com/en/java/javase/17/', type:'官方' },
           { label:'《Java 核心技术》Lambda 章节', type:'书籍' },
@@ -31,7 +31,7 @@ const PHASES = [
           { id:'t015', t:'实践：将工作代码中一段 for 循环改写为 Stream 链式写法', practice:true },
         ]
       },
-      { id:'s103', week:'Week 4–5', title:'Java 多线程',
+      { id:'s103', mod:'03', title:'Java 多线程',
         resources:[
           { label:'《Java 并发编程实战》', type:'书籍' },
           { label:'JavaGuide 并发', url:'https://javaguide.cn/java/concurrent/', type:'网站' },
@@ -47,7 +47,7 @@ const PHASES = [
           { id:'t025', t:'实践：扫描工作项目，找一处线程安全风险并分析', practice:true },
         ]
       },
-      { id:'s104', week:'Week 6–7', title:'Spring Core 深入',
+      { id:'s104', mod:'04', title:'Spring Core 深入',
         resources:[
           { label:'Spring 官方文档', url:'https://docs.spring.io/spring-framework/reference/', type:'官方' },
           { label:'Spring Boot 3 文档', url:'https://docs.spring.io/spring-boot/docs/current/reference/html/', type:'官方' },
@@ -61,7 +61,7 @@ const PHASES = [
           { id:'t035', t:'Spring MVC 请求链路：DispatcherServlet → Mapping → Interceptor → Controller' },
         ]
       },
-      { id:'s106', week:'Week 8', title:'设计模式',
+      { id:'s106', mod:'05', title:'设计模式',
         resources:[
           { label:'JavaGuide 设计模式', url:'https://javaguide.cn/system-design/design-pattern/', type:'网站' },
           { label:'Refactoring Guru', url:'https://refactoring.guru/design-patterns', type:'教程' },
@@ -79,10 +79,10 @@ const PHASES = [
     ]
   },
   {
-    id:'p2', n:2, title:'基础设施 + 数据库 + JVM', sub:'Week 9–17 · 约第 2–4 月', color:'#1D9E75',
-    note:'先搭环境再补原理：Week 11 部署的中间件，在 Week 14–15 深入时对照同一套环境验证',
+    id:'p2', n:2, title:'基础设施 + 数据库 + JVM', sub:'环境、中间件与数据库 / JVM', color:'#1D9E75',
+    note:'先搭环境再补原理：云服务器章节部署的中间件，在 MySQL / Redis 深入时对照同一套环境验证',
     sections:[
-      { id:'s201', week:'Week 9–10', title:'Linux + Docker',
+      { id:'s201', mod:'01', title:'Linux + Docker',
         resources:[
           { label:'Docker 从入门到实践', url:'https://yeasy.gitbook.io/docker_practice/', type:'教程' },
           { label:'Docker 官方文档', url:'https://docs.docker.com/', type:'官方' },
@@ -96,7 +96,7 @@ const PHASES = [
           { id:'t105', t:'Docker Compose 多服务配置：depends_on、networks、volumes', practice:true },
         ]
       },
-      { id:'s202', week:'Week 11–12', title:'云服务器搭建',
+      { id:'s202', mod:'02', title:'云服务器搭建',
         resources:[
           { label:'腾讯云轻量文档', url:'https://cloud.tencent.com/document/product/1207', type:'官方' },
           { label:'阿里云 ECS 文档', url:'https://help.aliyun.com/product/25365.html', type:'官方' },
@@ -110,7 +110,7 @@ const PHASES = [
           { id:'t115', t:'域名 + Nginx 反向代理 upstream/proxy_pass', optional:true },
         ]
       },
-      { id:'s203', week:'Week 13', title:'Jenkins CI/CD',
+      { id:'s203', mod:'03', title:'Jenkins CI/CD',
         resources:[
           { label:'Jenkins 官方手册', url:'https://www.jenkins.io/doc/book/', type:'官方' },
           { label:'Pipeline 语法', url:'https://www.jenkins.io/doc/book/pipeline/syntax/', type:'官方' },
@@ -124,7 +124,7 @@ const PHASES = [
           { id:'t125', t:'加入构建通知（钉钉 Webhook 或邮件）', optional:true },
         ]
       },
-      { id:'s204', week:'Week 14', title:'MySQL 深入',
+      { id:'s204', mod:'04', title:'MySQL 深入',
         resources:[
           { label:'小林 coding MySQL', url:'https://xiaolincoding.com/mysql/', type:'图解' },
           { label:'《高性能 MySQL》', type:'书籍' },
@@ -136,10 +136,10 @@ const PHASES = [
           { id:'t133', t:'MVCC：Read View、undo log、trx_id/roll_pointer 协作' },
           { id:'t134', t:'死锁：4 必要条件，SHOW ENGINE INNODB STATUS 定位' },
           { id:'t135', t:'实践：分析工作中 3 条慢 SQL 并给出索引优化', practice:true },
-          { id:'t136', t:'对照 Week 11 部署的 MySQL：用 EXPLAIN 分析 Nacos 持久化相关慢查询', practice:true },
+          { id:'t136', t:'对照云服务器章节部署的 MySQL：用 EXPLAIN 分析 Nacos 持久化相关慢查询', practice:true },
         ]
       },
-      { id:'s205', week:'Week 15', title:'Redis 基础（项目前置）',
+      { id:'s205', mod:'05', title:'Redis 基础（项目前置）',
         resources:[
           { label:'Redis 官方文档', url:'https://redis.io/docs/', type:'官方' },
           { label:'JavaGuide Redis', url:'https://javaguide.cn/database/redis/', type:'网站' },
@@ -151,10 +151,10 @@ const PHASES = [
           { id:'t143', t:'缓存穿透/击穿/雪崩的原因与解决方案' },
           { id:'t144', t:'分布式锁：SET NX EX 缺陷 + Redisson 基本原理' },
           { id:'t145', t:'实践：在本地项目实现一个接口缓存 + 缓存更新', practice:true },
-          { id:'t146', t:'对照 Week 11 部署的 Redis：验证缓存穿透/击穿防护方案', practice:true },
+          { id:'t146', t:'对照云服务器章节部署的 Redis：验证缓存穿透/击穿防护方案', practice:true },
         ]
       },
-      { id:'s206', week:'Week 16–17', title:'JVM 基础',
+      { id:'s206', mod:'06', title:'JVM 基础',
         resources:[
           { label:'《深入理解 Java 虚拟机》', type:'书籍' },
           { label:'Oracle JVM 参数', url:'https://docs.oracle.com/en/java/javase/17/docs/specs/man/java.html', type:'官方' },
@@ -172,10 +172,10 @@ const PHASES = [
     ]
   },
   {
-    id:'p3', n:3, title:'个人微服务项目', sub:'Week 18–29 · 约第 4.5–7 月（核心，勿压缩）', color:'#EF9F27',
-    note:'含 Kafka 实战与分布式事务接入。Week 18 复用 P2 的 Nacos/MySQL/Redis 环境，避免重复搭建',
+    id:'p3', n:3, title:'个人微服务项目', sub:'微服务项目与消息 / 分布式事务', color:'#EF9F27',
+    note:'含 Kafka 实战与分布式事务接入。脚手架阶段复用 P2 的 Nacos/MySQL/Redis 环境，避免重复搭建',
     sections:[
-      { id:'s301', week:'Week 18–19', title:'项目脚手架搭建',
+      { id:'s301', mod:'01', title:'项目脚手架搭建',
         resources:[
           { label:'Spring Cloud Alibaba', url:'https://sca.aliyun.com/', type:'官方' },
           { label:'Nacos 快速开始', url:'https://nacos.io/docs/latest/quickstart/quick-start/', type:'官方' },
@@ -192,7 +192,7 @@ const PHASES = [
           { id:'t205', t:'Feign 服务间调用 + 超时/重试配置', practice:true },
         ]
       },
-      { id:'s302', week:'Week 20–21', title:'RBAC 权限系统',
+      { id:'s302', mod:'02', title:'RBAC 权限系统',
         resources:[
           { label:'Spring Security 文档', url:'https://docs.spring.io/spring-security/reference/', type:'官方' },
           { label:'JWT.io', url:'https://jwt.io/', type:'工具' },
@@ -207,7 +207,7 @@ const PHASES = [
           { id:'t215', t:'双 Token（Access + Refresh）无感刷新', practice:true, optional:true },
         ]
       },
-      { id:'s303', week:'Week 22–23', title:'全链路日志追踪',
+      { id:'s303', mod:'03', title:'全链路日志追踪',
         resources:[
           { label:'SLF4J MDC 文档', url:'http://www.slf4j.org/manual.html#mdc', type:'官方' },
           { label:'Logback 配置', url:'https://logback.qos.ch/manual/configuration.html', type:'官方' },
@@ -220,7 +220,7 @@ const PHASES = [
           { id:'t225', t:'验证：gateway→auth→order 全链路 traceId 一致', practice:true },
         ]
       },
-      { id:'s304', week:'Week 24–25', title:'SkyWalking + 项目完善',
+      { id:'s304', mod:'04', title:'SkyWalking + 项目完善',
         resources:[
           { label:'SkyWalking 文档', url:'https://skywalking.apache.org/docs/', type:'官方' },
           { label:'Knife4j 文档', url:'https://doc.xiaominfo.com/', type:'官方' },
@@ -233,7 +233,7 @@ const PHASES = [
           { id:'t236', t:'项目内 Redis 缓存：热点接口加缓存 + 更新策略', practice:true },
         ]
       },
-      { id:'s305', week:'Week 26–27', title:'Kafka 实战接入',
+      { id:'s305', mod:'05', title:'Kafka 实战接入',
         resources:[
           { label:'《Kafka 权威指南》', type:'书籍' },
           { label:'Kafka 官方文档', url:'https://kafka.apache.org/documentation/', type:'官方' },
@@ -247,7 +247,7 @@ const PHASES = [
           { id:'t245', t:'项目落地：Kafka 实现订单状态变更异步通知', practice:true },
         ]
       },
-      { id:'s306', week:'Week 28–29', title:'分布式事务',
+      { id:'s306', mod:'06', title:'分布式事务',
         resources:[
           { label:'Seata 官方文档', url:'https://seata.io/zh-cn/docs/overview/what-is-seata.html', type:'官方' },
           { label:'JavaGuide 分布式事务', url:'https://javaguide.cn/distributed-system/distributed-transaction.html', type:'网站' },
@@ -264,10 +264,10 @@ const PHASES = [
     ]
   },
   {
-    id:'p4', n:4, title:'深度技术提升', sub:'Week 30–35 · 约第 7.5–9 月', color:'#7F77DD',
-    note:'Redis 深入与项目文档化并行，为求职做最后技术储备',
+    id:'p4', n:4, title:'深度技术提升', sub:'缓存、搜索与系统设计深化', color:'#7F77DD',
+    note:'Redis / Elasticsearch 与项目文档化并行，补齐检索与缓存体系',
     sections:[
-      { id:'s401', week:'Week 30–31', title:'Redis 深入',
+      { id:'s401', mod:'01', title:'Redis 深入',
         resources:[
           { label:'《Redis 设计与实现》', type:'书籍' },
           { label:'Redisson Wiki', url:'https://github.com/redisson/redisson/wiki', type:'官方' },
@@ -281,7 +281,22 @@ const PHASES = [
           { id:'t305', t:'实践：Lua 脚本实现滑动窗口限流器', practice:true, optional:true },
         ]
       },
-      { id:'s402', week:'Week 32–33', title:'系统设计基础',
+      { id:'s405', mod:'02', title:'Elasticsearch 基础',
+        resources:[
+          { label:'Elasticsearch 官方文档', url:'https://www.elastic.co/guide/en/elasticsearch/reference/current/index.html', type:'官方' },
+          { label:'JavaGuide Elasticsearch', url:'https://javaguide.cn/database/elasticsearch/', type:'网站' },
+          { label:'Spring Data Elasticsearch', url:'https://docs.spring.io/spring-data/elasticsearch/reference/', type:'官方' },
+        ],
+        tasks:[
+          { id:'t340', t:'倒排索引原理 + 分词（含 ik 中文分词概念）与全文检索场景' },
+          { id:'t341', t:'Index / Mapping / Document 基本概念，与 MySQL 表职责分工（为何不用 LIKE）' },
+          { id:'t342', t:'Docker 部署单节点 ES，验证健康状态并用 _search 完成简单查询', practice:true },
+          { id:'t343', t:'Spring Data Elasticsearch：建索引 + 文档写入/查询', practice:true },
+          { id:'t344', t:'项目落地：商品或订单关键词搜索接口', practice:true },
+          { id:'t345', t:'数据同步思路：双写 / 定时任务 / CDC 了解即可；集群分片与副本深入', optional:true },
+        ]
+      },
+      { id:'s402', mod:'03', title:'系统设计基础',
         resources:[
           { label:'《Kafka 权威指南》', type:'书籍' },
           { label:'Sentinel 文档', url:'https://sentinelguard.io/zh-cn/docs/introduction.html', type:'官方' },
@@ -298,7 +313,7 @@ const PHASES = [
           { id:'t315', t:'设计秒杀方案：Redis 预减 + Kafka 异步落库 + 幂等', practice:true },
         ]
       },
-      { id:'s403', week:'Week 34', title:'JVM 复习巩固',
+      { id:'s403', mod:'04', title:'JVM 复习巩固',
         resources:[
           { label:'《深入理解 Java 虚拟机》', type:'书籍' },
           { label:'JavaGuide JVM', url:'https://javaguide.cn/java/jvm/', type:'网站' },
@@ -309,7 +324,7 @@ const PHASES = [
           { id:'t328', t:'模拟面试：线上 OOM 排查步骤（dump→MAT→定位→修复）' },
         ]
       },
-      { id:'s404', week:'Week 35', title:'项目完善与文档',
+      { id:'s404', mod:'05', title:'项目完善与文档',
         resources:[
           { label:'JUnit 5 文档', url:'https://junit.org/junit5/docs/current/user-guide/', type:'官方' },
           { label:'JMeter 用户手册', url:'https://jmeter.apache.org/usermanual/index.html', type:'官方' },
@@ -328,10 +343,10 @@ const PHASES = [
     ]
   },
   {
-    id:'p5', n:5, title:'求职冲刺', sub:'Week 36–41 · 约第 9–10 月', color:'#D85A30',
+    id:'p5', n:5, title:'求职冲刺', sub:'高频八股与面试表达', color:'#D85A30',
     note:'八股与面试并行推进，按优先级分批完成，不求一次背完所有题目',
     sections:[
-      { id:'s502', week:'Week 39–41', title:'面试冲刺',
+      { id:'s502', mod:'01', title:'面试冲刺',
         resources:[
           { label:'JavaGuide 面试题', url:'https://javaguide.cn/interview-preparation/interview-preparation.html', type:'网站' },
           { label:'小林 coding', url:'https://xiaolincoding.com/', type:'图解' },
@@ -342,11 +357,10 @@ const PHASES = [
           { id:'t412', t:'MySQL/Redis/Spring/分布式/网络 各 15 条优先高频题 + 答案' },
           { id:'t413', t:'简历优化：项目放首位，量化工作经历（QPS/优化幅度）' },
           { id:'t414', t:'模拟面试 3 次：自我介绍+技术题+项目讲解+反问', practice:true },
-          { id:'t415', t:'投递 20-30 家，优先 B 轮以上有技术氛围的互联网公司' },
+          { id:'t415', t:'投递 20-30 家，优先 B 轮以上有技术氛围的互联网公司', optional:true },
           { id:'t417', t:'终检：对照路线图必做项，补齐未完成的核心任务', practice:true },
         ]
       },
     ]
   },
 ];
-

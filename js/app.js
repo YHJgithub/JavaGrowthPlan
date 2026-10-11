@@ -156,7 +156,7 @@ function showSectionCompleteScreen(sec, options = {}) {
 
   const ph = PHASES[activePhase];
   overlay.style.setProperty('--phase-color', ph.color);
-  weekEl.textContent = sec.week;
+  weekEl.textContent = sec.mod ? `模块 ${sec.mod}` : '';
   subtitleEl.textContent = sec.title;
   messageEl.textContent = '本小节全部任务已完成，继续加油！';
   sectionCompleteOnClose = options.onClose || null;
@@ -195,7 +195,7 @@ function showVictoryScreen(options = {}) {
   if (!overlay || !messageEl || !statsEl) return;
 
   const { reqTotal, total, meta } = getProgressSnapshot();
-  messageEl.textContent = `${meta.totalWeeks} 周成长路线圆满收官，可以投递简历了！`;
+  messageEl.textContent = '成长路线圆满收官，知识体系已闭环！';
   statsEl.innerHTML = `
     <div class="victory-stat">
       <span class="victory-stat-value">${reqTotal.total}</span>
@@ -473,38 +473,18 @@ function prog(tasks) {
   return { n, total, pct: total ? Math.round(n / total * 100) : 0 };
 }
 
-function parseWeekNumbers(text) {
-  if (!text) return [];
-  const weeks = [];
-  const re = /Week\s+(\d+)(?:\s*[–-]\s*(\d+))?/g;
-  let m;
-  while ((m = re.exec(text))) {
-    weeks.push(Number(m[1]));
-    if (m[2]) weeks.push(Number(m[2]));
-  }
-  return weeks;
-}
-
 function getCurriculumMeta() {
   const tasks = allTasks();
   const req = requiredTasks(tasks);
-  let totalWeeks = 0;
-  PHASES.forEach((p) => {
-    parseWeekNumbers(p.sub).forEach((w) => { totalWeeks = Math.max(totalWeeks, w); });
-    p.sections.forEach((s) => {
-      parseWeekNumbers(s.week).forEach((w) => { totalWeeks = Math.max(totalWeeks, w); });
-    });
-  });
   return {
     phaseCount: PHASES.length,
-    totalWeeks,
     taskCount: tasks.length,
     requiredCount: req.length,
   };
 }
 
 function formatHeaderSubtitle(meta = getCurriculumMeta()) {
-  return `9–10 个月 · ${meta.totalWeeks} 周 · ${meta.phaseCount} 阶段 · 必做 ${meta.requiredCount} 项 / 共 ${meta.taskCount} 项 · 1年+经验定制版`;
+  return `${meta.phaseCount} 阶段 · 必做 ${meta.requiredCount} 项 / 共 ${meta.taskCount} 项 · 体系化进阶`;
 }
 
 function formatSectionCount(sec) {
@@ -561,7 +541,7 @@ function sectionsHtml(ph) {
         aria-expanded="${isOpen}" aria-controls="body-${sec.id}">
         <div class="section-info">
           <div class="section-meta">
-            <span class="section-week" style="color:${ph.color}">${esc(sec.week)}</span>
+            <span class="section-week" style="color:${ph.color}">${esc(sec.mod || '')}</span>
             <span class="section-title">${esc(sec.title)}</span>
           </div>
         </div>
